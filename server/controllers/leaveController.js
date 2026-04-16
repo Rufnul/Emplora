@@ -1,6 +1,6 @@
 import { inngest } from "../inngest/index.js";
 import Employee from "../modals/EmployeeModal.js";
-import LeaveApplication from "../Modals/LeaveApplicationModal.js";
+import LeaveApplication from "../modals/LeaveApplicationModal.js";
 
 // create leave
 // POST /api/leaves

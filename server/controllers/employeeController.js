@@ -1,4 +1,4 @@
-import Employee from "../Modals/EmployeeModal.js";
+import Employee from "../modals/EmployeeModal.js";
 import bcrypt from "bcrypt";
 
 // get employees

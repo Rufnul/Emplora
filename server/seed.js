@@ -1,7 +1,7 @@
 import "dotenv/config";
 import bcrypt from "bcrypt";
 
-import connectDB from "./Config/db.js";
+import connectDB from "./config/db.js";
 import User from "./modals/UserModal.js";
 
 const TemporaryPassword = "admin123";

@@ -1,14 +1,30 @@
 import { AlertCircleIcon, CalendarIcon, ClockIcon } from "lucide-react";
 
 const AttendanceStats = ({ history }) => {
-  const totalPresent = history.filter(
-    (h) => h.status === "PRESENT" || h.status === "LATE",
-  ).lenght;
-  const totalLate = history.filter((h) => h.status === "LATE").lenght;
+  const safeHistory = Array.isArray(history) ? history : [];
+
+  const totalPresent = safeHistory.filter(
+    (h) => h?.status === "PRESENT" || h?.status === "LATE",
+  ).length;
+
+  const totalLate = safeHistory.filter((h) => h?.status === "LATE").length;
+
+  const validHours = safeHistory.filter(
+    (h) => typeof h?.workingHours === "number",
+  );
+
+  const totalHours = validHours.reduce(
+    (acc, curr) => acc + curr.workingHours,
+    0,
+  );
+
+  const avgHours =
+    validHours.length > 0 ? (totalHours / validHours.length).toFixed(1) : "8.5";
+
   const stats = [
     { label: "Days Present", value: totalPresent, icon: CalendarIcon },
     { label: "Late Arrivals", value: totalLate, icon: AlertCircleIcon },
-    { label: "Avg. Work Hrs", value: "8.5 Hrs", icon: ClockIcon },
+    { label: "Avg. Work Hrs", value: `${avgHours} Hrs`, icon: ClockIcon },
   ];
 
   return (
@@ -19,9 +35,11 @@ const AttendanceStats = ({ history }) => {
           className="card card-hover p-5 sm:p-6 flex items-center gap-4 relative overflow-hidden group"
         >
           <div className="absolute left-0 top-0 bottom-0 w-1 rounded-r-full bg-slate-500/70 group-hover:bg-indigo-500/70" />
+
           <div className="p-3 bg-slate-100 rounded-lg group-hover:bg-indigo-50 transition-colors duration-200">
             <s.icon className="w-5 h-5 text-slate-600 group-hover:text-indigo-600 transition-colors duration-200" />
           </div>
+
           <div>
             <p className="text-sm text-slate-500">{s.label}</p>
             <p className="text-2xl font-medium text-slate-900 tracking-tight">

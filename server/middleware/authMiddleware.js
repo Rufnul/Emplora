@@ -3,26 +3,29 @@ import jwt from "jsonwebtoken";
 export const protect = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startWith("Bearer ")) {
-      return res.status(401).json({ error: "Unauthorized" });
+
+    if (!authHeader) {
+      return res.status(401).json({ error: "Unauthorized: No token provided" });
     }
 
-    const token = authHeader.split(" ")[1];
-    const session = jwt.verify(token, process.env.JWT_SECRET);
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : authHeader;
 
-    if (!session) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    req.session = session;
+    req.user = decoded;
+
     next();
   } catch (error) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({
+      error: "Unauthorized: Invalid or expired token",
+    });
   }
 };
 
 export const protectAdmin = (req, res, next) => {
-  if (req?.session?.role !== "ADMIN") {
+  if (req?.user?.role !== "ADMIN") {
     return res.status(403).json({ error: "Admin access required" });
   }
   next();

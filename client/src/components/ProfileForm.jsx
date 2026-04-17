@@ -1,5 +1,6 @@
 import { Loader2, Save, User } from "lucide-react";
 import { useState } from "react";
+import api from "../api/axios";
 
 const ProfileForm = ({ initialData, onSuccess }) => {
   const [loading, setLoading] = useState(false);
@@ -8,6 +9,19 @@ const ProfileForm = ({ initialData, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
+    setMessage("");
+    const formData = new FormData(e.currentTarget);
+    try {
+      await api.post("/profile", formData);
+      setMessage("Profile Updated Successfully");
+      onSuccess?.();
+    } catch (err) {
+      setError(err.response?.data?.error || err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -71,7 +85,11 @@ const ProfileForm = ({ initialData, onSuccess }) => {
             defaultValue={initialData.bio || ""}
             disabled={initialData.isDeleted}
             placeholder="Write a brief bio"
-            className={`resize-none ${initialData.isDeleted ? "bg-slate-50 text-slate-400 cursor-not-allowed" : ""}`}
+            className={`resize-none ${
+              initialData.isDeleted
+                ? "bg-slate-50 text-slate-400 cursor-not-allowed"
+                : ""
+            }`}
           />
           <p className="text-xs text-slate-400 mt-1.5">
             This will be displayed on your profile

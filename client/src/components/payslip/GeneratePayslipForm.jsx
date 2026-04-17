@@ -1,5 +1,7 @@
 import { Loader2, Plus, X } from "lucide-react";
 import React, { useState } from "react";
+import api from "../../api/axios";
+import toast from "react-hot-toast";
 
 const GeneratePayslipForm = ({ employees, onSuccess }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -15,8 +17,32 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
       </button>
     );
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+
+    try {
+      const formData = new FormData(e.target);
+
+      const data = {
+        employeeId: formData.get("employeeId"),
+        month: formData.get("month"),
+        year: formData.get("year"),
+        basicSalary: formData.get("basicSalary"),
+        allowances: formData.get("allowances"),
+        deductions: formData.get("deductions"),
+      };
+
+      await api.post("/payslips", data);
+
+      toast.success("Payslip generated successfully");
+      setIsOpen(false);
+      onSuccess?.();
+    } catch (err) {
+      toast.error(err.response?.data?.error || err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -29,12 +55,14 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
           <button
             className="text-slate-400 hover:text-slate-600 p-1"
             onClick={() => setIsOpen(false)}
+            type="button"
           >
             <X size={20} />
           </button>
         </div>
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* select Employee */}
+          {/* Employee */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Employee
@@ -48,13 +76,13 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
             </select>
           </div>
 
-          {/* select month and year */}
+          {/* Month & Year */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Month
               </label>
-              <select name="month">
+              <select name="month" required>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                   <option key={m} value={m}>
                     {m}
@@ -62,6 +90,7 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
                 ))}
               </select>
             </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Year
@@ -69,12 +98,13 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
               <input
                 type="number"
                 name="year"
+                required
                 defaultValue={new Date().getFullYear()}
               />
             </div>
           </div>
 
-          {/* basic salary */}
+          {/* Salary */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               Basic Salary
@@ -87,13 +117,13 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
             />
           </div>
 
-          {/* allowances and deductions */}
+          {/* Allowances & Deductions */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Allowance
+                Allowances
               </label>
-              <input type="number" name="allowance" defaultValue={0} />
+              <input type="number" name="allowances" defaultValue={0} />
             </div>
 
             <div>
@@ -104,17 +134,18 @@ const GeneratePayslipForm = ({ employees, onSuccess }) => {
             </div>
           </div>
 
-          {/* buttons */}
+          {/* Buttons */}
           <div className="flex justify-end gap-3 pt-2">
             <button
-              onClick={() => setIsOpen(false)}
               type="button"
+              onClick={() => setIsOpen(false)}
               className="btn-secondary"
             >
               Cancel
             </button>
+
             <button
-              type="button"
+              type="submit"
               className="btn-primary flex items-center"
               disabled={loading}
             >

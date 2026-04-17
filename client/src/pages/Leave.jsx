@@ -11,19 +11,28 @@ import {
 } from "lucide-react";
 import LeaveHistory from "../components/leave/LeaveHistory";
 import ApplyLeaveModal from "../components/leave/ApplyLeaveModal";
+import { useAuth } from "../context/authContext";
+import api from "../api/axios";
+import toast from "react-hot-toast";
 
 const Leave = () => {
+  const { user } = useAuth();
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isDeleted, setIsDeleted] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const isAdmin = false;
+  const isAdmin = user.role === "ADMIN";
 
-  const fetchLeaves = useCallback(() => {
-    setLeaves(dummyLeaveData);
-    setTimeout(() => {
+  const fetchLeaves = useCallback(async () => {
+    try {
+      const res = await api.get("/leave");
+      setLeaves(res.data.data || []);
+      if (res.data.employee?.isDeleted) setIsDeleted(true);
+    } catch (error) {
+      toast.error(error?.response?.data?.error || error.message);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   }, []);
 
   useEffect(() => {

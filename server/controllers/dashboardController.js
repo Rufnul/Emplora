@@ -4,24 +4,35 @@ import Employee from "../modals/EmployeeModal.js";
 import LeaveApplication from "../modals/LeaveApplicationModal.js";
 import Payslip from "../modals/PayslipModal.js";
 
-// get dashboard for employee and admin
 // GET /api/dashboard
-
 export const getDashboard = async (req, res) => {
   try {
-    const session = req.session;
-    if (session.role === "ADMIN") {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // ================= ADMIN DASHBOARD =================
+    if (user.role === "ADMIN") {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      const endOfToday = new Date();
+      endOfToday.setHours(24, 0, 0, 0);
+
       const [totalEmployees, todayAttendance, pendingLeaves] =
         await Promise.all([
           Employee.countDocuments({ isDeleted: { $ne: true } }),
           Attendance.countDocuments({
             date: {
-              $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-              $lt: new Date(new Date().setHours(24, 0, 0, 0)),
+              $gte: startOfToday,
+              $lt: endOfToday,
             },
           }),
           LeaveApplication.countDocuments({ status: "PENDING" }),
         ]);
+
       return res.json({
         role: "ADMIN",
         totalEmployees,
@@ -29,43 +40,50 @@ export const getDashboard = async (req, res) => {
         todayAttendance,
         pendingLeaves,
       });
-    } else {
-      const employee = await Employee.findOne({
-        userId: session.userId,
-      }).lean();
-      if (!employee)
-        return res.status(404).json({ error: "Employee not found" });
-
-      const today = new Date();
-      const [currentMonthAttendance, pendingLeaves, latestPayslips] =
-        await Promise.all([
-          Attendance.countDocuments({
-            employeeId: employee_.id,
-            date: {
-              $gte: new Date(today.getFullYear(), today.getMonth(), 1),
-              $lt: new Date(today.getFullYear().today.getMonth() + 1, 1),
-            },
-          }).LeaveApplication.countDocuments({
-            employeeId: employee._id,
-            status: "PENDING",
-          }),
-          Payslip.findOne({ employeeId: employee._id })
-            .sort({ createdAt: -1 })
-            .lean(),
-        ]);
-
-      return res.json({
-        role: "EMPLOYEE",
-        employee: { ...employee, id: employee._id.toString() },
-        currentMonthAttendance,
-        pendingLeaves,
-        latestPayslip: latestPayslips
-          ? { ...latestPayslip, id: latestPayslip._id.toString() }
-          : null,
-      });
     }
+
+    // ================= EMPLOYEE DASHBOARD =================
+    const employee = await Employee.findOne({
+      userId: user.userId,
+    }).lean();
+
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
+    const today = new Date();
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+
+    const [currentMonthAttendance, pendingLeaves, latestPayslip] =
+      await Promise.all([
+        Attendance.countDocuments({
+          employeeId: employee._id,
+          date: {
+            $gte: startOfMonth,
+            $lt: endOfMonth,
+          },
+        }),
+        LeaveApplication.countDocuments({
+          employeeId: employee._id,
+          status: "PENDING",
+        }),
+        Payslip.findOne({ employeeId: employee._id })
+          .sort({ createdAt: -1 })
+          .lean(),
+      ]);
+
+    return res.json({
+      role: "EMPLOYEE",
+      employee: { ...employee, id: employee._id.toString() },
+      currentMonthAttendance,
+      pendingLeaves,
+      latestPayslip: latestPayslip
+        ? { ...latestPayslip, id: latestPayslip._id.toString() }
+        : null,
+    });
   } catch (error) {
     console.error("Dashboard Error", error);
-    return res.status(500).json({ error: "Failed" });
+    return res.status(500).json({ error: "Internal server error" });
   }
 };

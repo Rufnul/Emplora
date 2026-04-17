@@ -2,14 +2,21 @@ import { inngest } from "../inngest/index.js";
 import Employee from "../modals/EmployeeModal.js";
 import LeaveApplication from "../modals/LeaveApplicationModal.js";
 
-// create leave
 // POST /api/leaves
-
 export const createLeave = async (req, res) => {
   try {
-    const session = req.session;
-    const employee = await Employee.findOne({ userId: session.userId });
-    if (!employee) return res.status(404).json({ error: "Employee not found" });
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const employee = await Employee.findOne({ userId: user.userId });
+
+    if (!employee) {
+      return res.status(404).json({ error: "Employee not found" });
+    }
+
     if (employee.isDeleted) {
       return res.status(403).json({
         error: "Your account is deactivated. you cannot apply for leave",
@@ -24,6 +31,7 @@ export const createLeave = async (req, res) => {
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     if (new Date(startDate) <= today || new Date(endDate) <= today) {
       return res
         .status(400)
@@ -47,27 +55,35 @@ export const createLeave = async (req, res) => {
 
     await inngest.send({
       name: "leave/pending",
-      data: { LeaveApplicationId: leave - _id },
+      data: { leaveApplicationId: leave._id.toString() },
     });
 
-    return res.json({ success: true, date: leave });
+    return res.json({ success: true, data: leave });
   } catch (error) {
-    return res.status(500).json({ error: "Failed" });
+    console.error("CREATE LEAVE ERROR:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-// get leave
 // GET /api/leaves
 export const getLeaves = async (req, res) => {
   try {
-    const session = req.session;
-    const isAdmin = session.role === "ADMIN";
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const isAdmin = user.role === "ADMIN";
+
     if (isAdmin) {
       const status = req.query.status;
       const where = status ? { status } : {};
-      const leaves = (
-        await LeaveApplication.find(where).populate("employeeId")
-      ).toSorted({ createdAt: -1 });
+
+      const leaves = await LeaveApplication.find(where)
+        .populate("employeeId")
+        .sort({ createdAt: -1 });
+
       const data = leaves.map((l) => {
         const obj = l.toObject();
         return {
@@ -77,40 +93,56 @@ export const getLeaves = async (req, res) => {
           employeeId: obj.employeeId?._id?.toString(),
         };
       });
+
       return res.json({ data });
-    } else {
-      const employee = await Employee.findOne({
-        userId: session.userId,
-      }).lean();
-      if (!employee) return res.status(404).json({ error: "Not Found" });
-      const leave = await LeaveApplication.find({
-        employeeId: employee._id,
-      }).sort({ createdAt: -1 });
-      return res.json({
-        data: leaves,
-        employee: { ...employee, id: employee._id.toString() },
-      });
     }
+
+    const employee = await Employee.findOne({
+      userId: user.userId,
+    }).lean();
+
+    if (!employee) {
+      return res.status(404).json({ error: "Not Found" });
+    }
+
+    const leaves = await LeaveApplication.find({
+      employeeId: employee._id,
+    }).sort({ createdAt: -1 });
+
+    return res.json({
+      data: leaves,
+      employee: { ...employee, id: employee._id.toString() },
+    });
   } catch (error) {
-    return res.status(500).json({ error: "Failed" });
+    console.error("GET LEAVES ERROR:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };
 
-// update leave ststus
 // PATCH /api/leaves/:id
 export const updateLeavestatus = async (req, res) => {
   try {
+    const user = req.user;
+
+    if (!user) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
     const { status } = req.body;
+
     if (!["APPROVED", "REJECTED", "PENDING"].includes(status)) {
       return res.status(400).json({ error: "Invalid status" });
     }
+
     const leave = await LeaveApplication.findByIdAndUpdate(
       req.params.id,
       { status },
-      { returnDocument: "after" },
+      { new: true },
     );
+
     return res.json({ success: true, data: leave });
   } catch (error) {
-    return res.status(500).json({ error: "Failed" });
+    console.error("UPDATE LEAVE ERROR:", error);
+    return res.status(500).json({ error: "Internal server error" });
   }
 };

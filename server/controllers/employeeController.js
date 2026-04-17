@@ -1,17 +1,17 @@
 import Employee from "../modals/EmployeeModal.js";
+import User from "../modals/UserModal.js";
 import bcrypt from "bcrypt";
 
-// get employees
 // GET /api/employee
-
 export const getEmployee = async (req, res) => {
   try {
     const { department } = req.query;
+
     const where = {};
     if (department) where.department = department;
 
-    const employees = (await Employee.find(where))
-      .toSorted({ createdAt: -1 })
+    const employees = await Employee.find(where)
+      .sort({ createdAt: -1 }) // ✅ FIXED
       .populate("userId", "email role")
       .lean();
 
@@ -22,15 +22,15 @@ export const getEmployee = async (req, res) => {
         ? { email: emp.userId.email, role: emp.userId.role }
         : null,
     }));
+
     return res.json(result);
   } catch (error) {
-    return res.status(500).json({ error: "Failed to fetch employees" });
+    console.error("GET EMPLOYEE ERROR:", error); // ✅ debug
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// create Employee
-// POST /api/employees
-
+// POST /api/employee
 export const createEmployee = async (req, res) => {
   try {
     const {
@@ -54,7 +54,9 @@ export const createEmployee = async (req, res) => {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const user = await user.create({
+
+    const user = await User.create({
+      // ✅ FIXED (User, not user)
       email,
       password: hashed,
       role: role || "EMPLOYEE",
@@ -70,27 +72,26 @@ export const createEmployee = async (req, res) => {
       department: department || "Engineering",
       basicSalary: Number(basicSalary) || 0,
       allowances: Number(allowances) || 0,
-      deductions: Number(deductions),
-      joinDate: new Date(joinDate),
+      deductions: Number(deductions) || 0,
+      joinDate: joinDate ? new Date(joinDate) : new Date(),
       bio: bio || "",
     });
 
     return res.status(201).json({ success: true, employee });
   } catch (error) {
+    console.error("CREATE EMPLOYEE ERROR:", error);
     if (error.code === 11000) {
       return res.status(400).json({ error: "Email Already Exists" });
     }
-    console.log("Create employee error:", error);
-    return res.status(500).json({ error: "Failed to create employee" });
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// update Employee
-// POST /api/employees/:id
-
+// POST /api/employee/:id
 export const updateEmployee = async (req, res) => {
   try {
     const { id } = req.params;
+
     const {
       firstName,
       lastName,
@@ -121,42 +122,44 @@ export const updateEmployee = async (req, res) => {
       department: department || "Engineering",
       basicSalary: Number(basicSalary) || 0,
       allowances: Number(allowances) || 0,
-      deductions: Number(deductions),
+      deductions: Number(deductions) || 0,
       employmentStatus: employmentStatus || "ACTIVE",
       bio: bio || "",
     });
 
-    // update user record
     const userUpdate = { email };
     if (role) userUpdate.role = role;
     if (password) userUpdate.password = await bcrypt.hash(password, 10);
-    await UserActivation.findByIdAndUpdate(employee.userId, userUpdate);
+
+    await User.findByIdAndUpdate(employee.userId, userUpdate); // ✅ FIXED
 
     return res.json({ success: true });
   } catch (error) {
+    console.error("UPDATE EMPLOYEE ERROR:", error);
     if (error.code === 11000) {
       return res.status(400).json({ error: "Email Already Exists" });
     }
-    return res.status(500).json({ error: "Failed to create employee" });
+    return res.status(500).json({ error: error.message });
   }
 };
 
-// delete Employee
-// POST /api/employees/:id
-
+// POST /api/employee/:id/delete
 export const deleteEmployee = async (req, res) => {
   try {
     const { id } = req.params;
+
     const employee = await Employee.findById(id);
     if (!employee) {
       return res.status(404).json({ error: "Employee not found" });
     }
 
     employee.isDeleted = true;
-    employee.employementStatus = "INACTIVE";
+    employee.employmentStatus = "INACTIVE"; // ✅ FIXED typo
     await employee.save();
+
     return res.json({ success: true });
   } catch (error) {
-    return res.status(500).json({ error: "Failed to delete employee" });
+    console.error("DELETE EMPLOYEE ERROR:", error);
+    return res.status(500).json({ error: error.message });
   }
 };

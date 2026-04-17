@@ -2,16 +2,41 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DEPARTMENTS } from "../assets/assets";
 import { Loader2Icon } from "lucide-react";
+import { toast } from "react-toastify";
+import api from "../api/axios";
 
 const EmployeeForm = ({ initialData, onSuccess, onCancel }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  // FIX: check real data, not just existence
   const isEditMode = !!initialData?.id;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+
+    try {
+      if (isEditMode) {
+        const pwd = formData.get("password");
+        if (!pwd) formData.delete("password");
+      }
+
+      const data = Object.fromEntries(formData.entries());
+
+      const url = isEditMode ? `/employee/${initialData.id}` : "/employee";
+      const method = isEditMode ? "put" : "post";
+
+      await api[method](url, data);
+
+      onSuccess ? onSuccess() : navigate("/employees");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.response?.data?.error || err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -63,7 +88,6 @@ const EmployeeForm = ({ initialData, onSuccess, onCancel }) => {
             />
           </div>
 
-          {/* FIX: typo */}
           <div className="sm:col-span-2">
             <label className="block mb-2">Bio (optional)</label>
             <textarea

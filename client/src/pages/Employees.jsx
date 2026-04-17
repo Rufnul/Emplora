@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { dummyEmployeeData, DEPARTMENTS } from "../assets/assets";
+import { DEPARTMENTS } from "../assets/assets";
 import { Plus, Search, X } from "lucide-react";
 import EmployeeCard from "../components/EmployeeCard";
 import EmployeeForm from "../components/EmployeeForm";
+import api from "../api/axios";
 
 const Employees = () => {
   const [employees, setEmployees] = useState([]);
@@ -13,15 +14,31 @@ const Employees = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const fetchEmployees = useCallback(async () => {
-    setLoading(true);
-    setEmployees(
-      dummyEmployeeData.filter((emp) =>
-        selectedDept ? emp.department === selectedDept : true,
-      ),
-    );
-    setTimeout(() => {
+    try {
+      setLoading(true);
+
+      const url = selectedDept
+        ? `/employee?department=${encodeURIComponent(selectedDept)}`
+        : "/employee";
+
+      const token = localStorage.getItem("token");
+
+      const res = await api.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setEmployees(res.data || []);
+    } catch (error) {
+      console.error(
+        "Failed to fetch employees:",
+        error?.response?.data || error.message,
+      );
+      setEmployees([]);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   }, [selectedDept]);
 
   useEffect(() => {
@@ -29,7 +46,7 @@ const Employees = () => {
   }, [fetchEmployees]);
 
   const filtered = employees.filter((emp) =>
-    `${emp.firstName} ${emp.lastName} ${emp.position}`
+    `${emp.firstName || ""} ${emp.lastName || ""} ${emp.position || ""}`
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
@@ -89,7 +106,7 @@ const Employees = () => {
           ) : (
             filtered.map((emp) => (
               <EmployeeCard
-                key={emp.id}
+                key={emp._id || emp.id}
                 employee={emp}
                 onDelete={fetchEmployees}
                 onEdit={() => setEditEmployee(emp)}

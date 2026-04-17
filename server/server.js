@@ -14,6 +14,7 @@ import { serve } from "inngest/express";
 import { inngest, functions } from "./inngest/index.js";
 
 dotenv.config();
+connectDB();
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -28,7 +29,7 @@ app.get("/", (req, res) => {
   res.send("Server is running...");
 });
 app.use("/api/auth", authRouter);
-app.use("/api/employees", employeeRouter);
+app.use("/api/employee", employeeRouter);
 app.use("/api/profile", profileRouter);
 app.use("/api/attendance", attendanceRouter);
 app.use("/api/leave", leaveRouter);
@@ -38,7 +39,6 @@ app.use("/api/dashboard", dashboardRouter);
 // inngest
 app.use("/api/inngest", serve({ client: inngest, functions }));
 
-await connectDB();
 app.listen(port, () => {
   console.log("Server Running Smoothly...");
 });

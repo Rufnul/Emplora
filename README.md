@@ -54,9 +54,7 @@ ________________________________________
 •	API integration with error handling 
 •	Responsive design 
 ________________________________________
-📸 Screenshots (Optional)
-(Add your UI screenshots here)
-________________________________________
+
 ⚙️ Installation
 git clone https://github.com/your-username/emplora.git
 cd emplora
